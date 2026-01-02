@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ink War - Multiplayer Paint Battle</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen active">
+        <div class="container">
+            <h1>🎨 INK WAR</h1>
+            <p class="subtitle">Multiplayer Paint Battle</p>
+            
+            <div class="lobby-options">
+                <button id="create-room-btn" class="btn btn-primary">Create Room</button>
+                <button id="join-room-btn" class="btn btn-secondary">Join Room</button>
+            </div>
+
+            <div id="room-code-section" class="hidden">
+                <div class="room-code-display">
+                    <label>Room Code:</label>
+                    <div id="room-code" class="code-display"></div>
+                    <button id="copy-code-btn" class="btn-small">Copy</button>
+                </div>
+                <div class="player-list">
+                    <h3>Players (<span id="player-count">0</span>/6)</h3>
+                    <div id="players-container"></div>
+                </div>
+                <button id="start-game-btn" class="btn btn-success hidden">Start Game</button>
+            </div>
+
+            <div id="join-room-section" class="hidden">
+                <input type="text" id="room-code-input" placeholder="Enter Room Code" maxlength="6">
+                <input type="text" id="player-name-input" placeholder="Your Name" maxlength="15">
+                <button id="join-btn" class="btn btn-primary">Join</button>
+                <button id="back-btn" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="game-container">
+            <div class="game-header">
+                <div class="timer">
+                    <span id="timer-display">2:00</span>
+                </div>
+                <div class="scores" id="scores-container"></div>
+            </div>
+            
+            <canvas id="game-canvas"></canvas>
+            
+            <div class="controls">
+                <button id="turn-left-btn" class="control-btn">
+                    <span class="arrow">↺</span>
+                    <span class="label">Turn Left</span>
+                </button>
+                <button id="turn-right-btn" class="control-btn">
+                    <span class="arrow">↻</span>
+                    <span class="label">Turn Right</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="results-screen" class="screen">
+        <div class="container">
+            <h1>🏆 Game Over!</h1>
+            <div id="winner-display"></div>
+            <div id="final-scores"></div>
+            <div class="lobby-options">
+                <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+                <button id="leave-room-btn" class="btn btn-secondary">Leave Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>Connecting...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
