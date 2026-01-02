@@ -1,3 +1,5 @@
+onrender.com puts server to sleep if not used. https://gundb.onrender.com
+--
 Right now, it rotates in 90 degree angle when button is pressed. It should rotate at very small angles based on how long it is pressed.
 
 ---

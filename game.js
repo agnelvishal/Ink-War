@@ -67,6 +67,13 @@ let animationId;
 let lastUpdateTime = 0;
 let timerInterval;
 
+// Rotation state
+let rotationState = {
+    isRotatingLeft: false,
+    isRotatingRight: false,
+    rotationSpeed: 180 // degrees per second
+};
+
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
     initializeGun();
@@ -125,23 +132,49 @@ function setupEventListeners() {
     document.getElementById('copy-code-btn').addEventListener('click', copyRoomCode);
     document.getElementById('start-game-btn').addEventListener('click', startGame);
     
-    // Game controls
-    document.getElementById('turn-left-btn').addEventListener('click', () => turnBrush('left'));
-    document.getElementById('turn-right-btn').addEventListener('click', () => turnBrush('right'));
+    // Game controls - Hold to rotate
+    const leftBtn = document.getElementById('turn-left-btn');
+    const rightBtn = document.getElementById('turn-right-btn');
+    
+    // Mouse events
+    leftBtn.addEventListener('mousedown', () => startRotating('left'));
+    leftBtn.addEventListener('mouseup', () => stopRotating('left'));
+    leftBtn.addEventListener('mouseleave', () => stopRotating('left'));
+    
+    rightBtn.addEventListener('mousedown', () => startRotating('right'));
+    rightBtn.addEventListener('mouseup', () => stopRotating('right'));
+    rightBtn.addEventListener('mouseleave', () => stopRotating('right'));
+    
+    // Touch events for mobile
+    leftBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startRotating('left');
+    });
+    leftBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        stopRotating('left');
+    });
+    leftBtn.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        stopRotating('left');
+    });
+    
+    rightBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startRotating('right');
+    });
+    rightBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        stopRotating('right');
+    });
+    rightBtn.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        stopRotating('right');
+    });
     
     // Results buttons
     document.getElementById('play-again-btn').addEventListener('click', playAgain);
     document.getElementById('leave-room-btn').addEventListener('click', leaveRoom);
-    
-    // Touch events for mobile
-    document.getElementById('turn-left-btn').addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        turnBrush('left');
-    });
-    document.getElementById('turn-right-btn').addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        turnBrush('right');
-    });
 }
 
 function setupKeyboardControls() {
@@ -150,12 +183,46 @@ function setupKeyboardControls() {
         
         if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
             e.preventDefault();
-            turnBrush('left');
+            if (!rotationState.isRotatingLeft) {
+                startRotating('left');
+            }
         } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
             e.preventDefault();
-            turnBrush('right');
+            if (!rotationState.isRotatingRight) {
+                startRotating('right');
+            }
         }
     });
+    
+    document.addEventListener('keyup', (e) => {
+        if (!gameState.gameStarted || gameState.gameEnded) return;
+        
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+            e.preventDefault();
+            stopRotating('left');
+        } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+            e.preventDefault();
+            stopRotating('right');
+        }
+    });
+}
+
+function startRotating(direction) {
+    if (!gameState.gameStarted || gameState.gameEnded) return;
+    
+    if (direction === 'left') {
+        rotationState.isRotatingLeft = true;
+    } else if (direction === 'right') {
+        rotationState.isRotatingRight = true;
+    }
+}
+
+function stopRotating(direction) {
+    if (direction === 'left') {
+        rotationState.isRotatingLeft = false;
+    } else if (direction === 'right') {
+        rotationState.isRotatingRight = false;
+    }
 }
 
 // ===== ROOM MANAGEMENT =====
@@ -271,7 +338,7 @@ function addPlayerToRoom(playerId, playerName, colorIndex) {
         colorIndex: colorIndex,
         x: Math.floor(Math.random() * GAME_LOGIC.GRID_COLS),
         y: Math.floor(Math.random() * GAME_LOGIC.GRID_ROWS),
-        direction: Math.floor(Math.random() * 4) // 0: up, 1: right, 2: down, 3: left
+        angle: Math.random() * 360 // Random angle in degrees (0-360)
     };
     
     roomRef.get('players').get(playerId).put(playerData);
@@ -393,21 +460,28 @@ function updatePlayerPositions() {
     const myPlayer = gameState.players[gameState.playerId];
     if (!myPlayer) return;
     
-    // Move player forward based on direction using FIXED logical grid
-    switch (myPlayer.direction) {
-        case 0: // up
-            myPlayer.y -= 1;
-            break;
-        case 1: // right
-            myPlayer.x += 1;
-            break;
-        case 2: // down
-            myPlayer.y += 1;
-            break;
-        case 3: // left
-            myPlayer.x -= 1;
-            break;
+    // Apply rotation if buttons are held
+    const deltaTime = 1 / 30; // 30 FPS
+    if (rotationState.isRotatingLeft) {
+        myPlayer.angle -= rotationState.rotationSpeed * deltaTime;
     }
+    if (rotationState.isRotatingRight) {
+        myPlayer.angle += rotationState.rotationSpeed * deltaTime;
+    }
+    
+    // Normalize angle to 0-360 range
+    myPlayer.angle = ((myPlayer.angle % 360) + 360) % 360;
+    
+    // Convert angle to radians for trigonometry
+    const angleRad = (myPlayer.angle * Math.PI) / 180;
+    
+    // Move player forward based on angle
+    // Note: 0° = right, 90° = down, 180° = left, 270° = up (standard math convention)
+    // Adjust to game convention: 0° = up, 90° = right, 180° = down, 270° = left
+    const gameAngleRad = angleRad - Math.PI / 2;
+    
+    myPlayer.x += Math.cos(gameAngleRad);
+    myPlayer.y += Math.sin(gameAngleRad);
     
     // Wrap around edges using logical grid dimensions
     if (myPlayer.x < 0) myPlayer.x = GAME_LOGIC.GRID_COLS - 1;
@@ -415,22 +489,25 @@ function updatePlayerPositions() {
     if (myPlayer.y < 0) myPlayer.y = GAME_LOGIC.GRID_ROWS - 1;
     if (myPlayer.y >= GAME_LOGIC.GRID_ROWS) myPlayer.y = 0;
     
-    // Paint current cell
-    if (myPlayer.y >= 0 && myPlayer.y < GAME_LOGIC.GRID_ROWS && 
-        myPlayer.x >= 0 && myPlayer.x < GAME_LOGIC.GRID_COLS) {
-        grid[myPlayer.y][myPlayer.x] = myPlayer.colorIndex;
+    // Paint current cell (use floor to get integer grid position)
+    const gridX = Math.floor(myPlayer.x);
+    const gridY = Math.floor(myPlayer.y);
+    
+    if (gridY >= 0 && gridY < GAME_LOGIC.GRID_ROWS && 
+        gridX >= 0 && gridX < GAME_LOGIC.GRID_COLS) {
+        grid[gridY][gridX] = myPlayer.colorIndex;
     }
     
     // Update position in GunDB
     roomRef.get('players').get(gameState.playerId).put({
         x: myPlayer.x,
         y: myPlayer.y,
-        direction: myPlayer.direction
+        angle: myPlayer.angle
     });
     
     // Update grid in GunDB (throttled)
     if (Math.random() < 0.1) { // Only sync 10% of the time to reduce load
-        syncGridCell(myPlayer.x, myPlayer.y, myPlayer.colorIndex);
+        syncGridCell(gridX, gridY, myPlayer.colorIndex);
     }
 }
 
@@ -442,13 +519,15 @@ function listenForPositionUpdates() {
             } else {
                 gameState.players[playerId].x = player.x;
                 gameState.players[playerId].y = player.y;
-                gameState.players[playerId].direction = player.direction;
+                gameState.players[playerId].angle = player.angle || 0;
             }
             
             // Paint cell for remote player using logical grid
-            if (player.y >= 0 && player.y < GAME_LOGIC.GRID_ROWS && 
-                player.x >= 0 && player.x < GAME_LOGIC.GRID_COLS) {
-                grid[player.y][player.x] = player.colorIndex;
+            const gridX = Math.floor(player.x);
+            const gridY = Math.floor(player.y);
+            if (gridY >= 0 && gridY < GAME_LOGIC.GRID_ROWS && 
+                gridX >= 0 && gridX < GAME_LOGIC.GRID_COLS) {
+                grid[gridY][gridX] = player.colorIndex;
             }
         }
     });
@@ -525,35 +604,29 @@ function render() {
         );
         ctx.fill();
         
-        // Draw direction indicator
+        // Draw direction indicator based on angle
         ctx.fillStyle = 'white';
         ctx.beginPath();
         const centerX = px + CONFIG.CELL_SIZE / 2;
         const centerY = py + CONFIG.CELL_SIZE / 2;
         const size = CONFIG.CELL_SIZE * 1.5;
         
-        switch (player.direction) {
-            case 0: // up
-                ctx.moveTo(centerX, centerY - size);
-                ctx.lineTo(centerX - size / 2, centerY);
-                ctx.lineTo(centerX + size / 2, centerY);
-                break;
-            case 1: // right
-                ctx.moveTo(centerX + size, centerY);
-                ctx.lineTo(centerX, centerY - size / 2);
-                ctx.lineTo(centerX, centerY + size / 2);
-                break;
-            case 2: // down
-                ctx.moveTo(centerX, centerY + size);
-                ctx.lineTo(centerX - size / 2, centerY);
-                ctx.lineTo(centerX + size / 2, centerY);
-                break;
-            case 3: // left
-                ctx.moveTo(centerX - size, centerY);
-                ctx.lineTo(centerX, centerY - size / 2);
-                ctx.lineTo(centerX, centerY + size / 2);
-                break;
-        }
+        // Use angle if available, otherwise fall back to direction
+        const angle = player.angle !== undefined ? player.angle : (player.direction || 0) * 90;
+        const angleRad = (angle * Math.PI) / 180;
+        const gameAngleRad = angleRad - Math.PI / 2;
+        
+        // Calculate arrow points
+        const tipX = centerX + Math.cos(gameAngleRad) * size;
+        const tipY = centerY + Math.sin(gameAngleRad) * size;
+        const leftX = centerX + Math.cos(gameAngleRad + (2.5 * Math.PI / 3)) * (size / 2);
+        const leftY = centerY + Math.sin(gameAngleRad + (2.5 * Math.PI / 3)) * (size / 2);
+        const rightX = centerX + Math.cos(gameAngleRad - (2.5 * Math.PI / 3)) * (size / 2);
+        const rightY = centerY + Math.sin(gameAngleRad - (2.5 * Math.PI / 3)) * (size / 2);
+        
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(leftX, leftY);
+        ctx.lineTo(rightX, rightY);
         ctx.closePath();
         ctx.fill();
     });
