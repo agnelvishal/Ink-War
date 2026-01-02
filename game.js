@@ -506,7 +506,7 @@ function updatePlayerPositions() {
     });
     
     // Update grid in GunDB (throttled for higher resolution)
-    if (Math.random() < 0.03) { // Only sync 3% of the time to reduce load with 3x resolution
+    if (Math.random() < 0.15) { // Sync 15% of the time for better visibility
         syncGridCell(gridX, gridY, myPlayer.colorIndex);
     }
 }
@@ -522,12 +522,27 @@ function listenForPositionUpdates() {
                 gameState.players[playerId].angle = player.angle || 0;
             }
             
-            // Paint cell for remote player using logical grid
+            // Paint larger brush stroke for remote player (5x5 circular area)
             const gridX = Math.floor(player.x);
             const gridY = Math.floor(player.y);
-            if (gridY >= 0 && gridY < GAME_LOGIC.GRID_ROWS && 
-                gridX >= 0 && gridX < GAME_LOGIC.GRID_COLS) {
-                grid[gridY][gridX] = player.colorIndex;
+            const brushRadius = 2; // Creates 5x5 area (2 cells in each direction)
+            
+            for (let dy = -brushRadius; dy <= brushRadius; dy++) {
+                for (let dx = -brushRadius; dx <= brushRadius; dx++) {
+                    const paintX = gridX + dx;
+                    const paintY = gridY + dy;
+                    
+                    // Check bounds
+                    if (paintY >= 0 && paintY < GAME_LOGIC.GRID_ROWS && 
+                        paintX >= 0 && paintX < GAME_LOGIC.GRID_COLS) {
+                        
+                        // Circular brush for more natural look
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance <= brushRadius) {
+                            grid[paintY][paintX] = player.colorIndex;
+                        }
+                    }
+                }
             }
         }
     });

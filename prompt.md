@@ -1,3 +1,5 @@
+When 2 players play, only certain dots of other player is displayed. That is, other players position is not visible fully.
+---
 The game looks low resolution.
 --
 onrender.com puts server to sleep if not used. Call the server https://gundb.onrender.com on html load?
