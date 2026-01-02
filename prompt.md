@@ -1,3 +1,5 @@
+In mobile, the buttons to change direction are 90% hidden. Remove the buttons. Let user rotate by clicking anywhere on screen.
+
 One needs to move paint brush with up and down buttons in screen for mobile. 2 to 6 players in one screen. One with maximum color wins. Each player has one color.
 
 Use html, css and js. Use additional packages if required.
