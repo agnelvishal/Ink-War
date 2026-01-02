@@ -2,8 +2,8 @@
 
 // Fixed game logic - same for all players
 const GAME_LOGIC = {
-    GRID_COLS: 90,              // Fixed logical grid width
-    GRID_ROWS: 160,             // Fixed logical grid height
+    GRID_COLS: 270,             // Fixed logical grid width (3x resolution)
+    GRID_ROWS: 480,             // Fixed logical grid height (3x resolution)
     CELLS_PER_SECOND: 30,       // Movement speed (cells per second)
     GAME_DURATION: 120,         // 2 minutes in seconds
     MAX_PLAYERS: 6,
@@ -505,8 +505,8 @@ function updatePlayerPositions() {
         angle: myPlayer.angle
     });
     
-    // Update grid in GunDB (throttled)
-    if (Math.random() < 0.1) { // Only sync 10% of the time to reduce load
+    // Update grid in GunDB (throttled for higher resolution)
+    if (Math.random() < 0.03) { // Only sync 3% of the time to reduce load with 3x resolution
         syncGridCell(gridX, gridY, myPlayer.colorIndex);
     }
 }
@@ -592,13 +592,13 @@ function render() {
         const px = player.x * CONFIG.CELL_SIZE;
         const py = player.y * CONFIG.CELL_SIZE;
         
-        // Draw brush circle
+        // Draw brush circle (increased size for better visibility with higher resolution)
         ctx.fillStyle = player.color;
         ctx.beginPath();
         ctx.arc(
             px + CONFIG.CELL_SIZE / 2,
             py + CONFIG.CELL_SIZE / 2,
-            CONFIG.CELL_SIZE * 2,
+            CONFIG.CELL_SIZE * 3,
             0,
             Math.PI * 2
         );

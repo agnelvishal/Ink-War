@@ -1,4 +1,6 @@
-onrender.com puts server to sleep if not used. https://gundb.onrender.com
+The game looks low resolution.
+--
+onrender.com puts server to sleep if not used. Call the server https://gundb.onrender.com on html load?
 --
 Right now, it rotates in 90 degree angle when button is pressed. It should rotate at very small angles based on how long it is pressed.
 
