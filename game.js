@@ -287,8 +287,8 @@ function joinRoom() {
     const roomCode = document.getElementById('room-code-input').value.toUpperCase().trim();
     const playerName = document.getElementById('player-name-input').value.trim() || 'Player';
     
-    if (roomCode.length !== 6) {
-        alert('Please enter a valid 6-character room code');
+    if (roomCode.length !== 4) {
+        alert('Please enter a valid 4-character room code');
         return;
     }
     
@@ -938,7 +938,7 @@ function setupResizeHandler() {
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
