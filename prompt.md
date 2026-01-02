@@ -1,3 +1,5 @@
+Let the background of game be in white. Suggestions to make the game visually better?
+--
 When 2 players play, only certain dots of other player is displayed. That is, other players position is not visible fully.
 ---
 The game looks low resolution.

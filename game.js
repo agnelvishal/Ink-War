@@ -76,6 +76,7 @@ let rotationState = {
 
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
+    wakeUpServer();
     initializeGun();
     detectPerformanceTier();
     calculateCanvasSize();
@@ -84,6 +85,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setupKeyboardControls();
     setupResizeHandler();
 });
+
+function wakeUpServer() {
+    // Wake up the Render.com server to avoid cold start delays
+    fetch('https://gundb.onrender.com/gun', {
+        method: 'HEAD',
+        mode: 'no-cors'
+    }).catch(() => {
+        // Silently fail - server will wake up anyway
+        console.log('Server wake-up call sent');
+    });
+}
 
 function initializeGun() {
     // Initialize GunDB with public relay peers
@@ -581,7 +593,7 @@ function turnBrush(direction) {
 
 function render() {
     // Clear canvas
-    ctx.fillStyle = '#0f0f1e';
+    ctx.fillStyle = '#f5f5f5';
     ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
     
     // Draw grid
