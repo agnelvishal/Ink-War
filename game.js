@@ -70,15 +70,19 @@ let timerInterval;
 // ===== INITIALIZATION =====
 document.addEventListener('DOMContentLoaded', () => {
     initializeGun();
+    detectPerformanceTier();
+    calculateCanvasSize();
     setupEventListeners();
     setupCanvas();
     setupKeyboardControls();
+    setupResizeHandler();
 });
 
 function initializeGun() {
     // Initialize GunDB with public relay peers
     // gun = GUN(['https://gun-manhattan.herokuapp.com/gun', 'https://gun-us.herokuapp.com/gun']);
-  gun = Gun(['http://localhost:8765/gun']);
+//   gun = Gun(['http://localhost:8765/gun']);
+  gun = Gun(['https://gundb.onrender.com/gun']);
 
     console.log('GunDB initialized');
 }
@@ -87,20 +91,28 @@ function setupCanvas() {
     canvas = document.getElementById('game-canvas');
     ctx = canvas.getContext('2d');
     
-    // Set canvas size
-    canvas.width = CONFIG.CANVAS_WIDTH;
-    canvas.height = CONFIG.CANVAS_HEIGHT;
+    // Set canvas size based on calculated dimensions
+    canvas.width = DISPLAY.canvasWidth;
+    canvas.height = DISPLAY.canvasHeight;
     
-    // Initialize grid
-    const cols = Math.floor(CONFIG.CANVAS_WIDTH / CONFIG.CELL_SIZE);
-    const rows = Math.floor(CONFIG.CANVAS_HEIGHT / CONFIG.CELL_SIZE);
+    // Apply pixel ratio for crisp rendering on high-DPI displays
+    if (DISPLAY.pixelRatio > 1) {
+        canvas.style.width = DISPLAY.canvasWidth + 'px';
+        canvas.style.height = DISPLAY.canvasHeight + 'px';
+        canvas.width = DISPLAY.canvasWidth * DISPLAY.pixelRatio;
+        canvas.height = DISPLAY.canvasHeight * DISPLAY.pixelRatio;
+        ctx.scale(DISPLAY.pixelRatio, DISPLAY.pixelRatio);
+    }
     
-    for (let y = 0; y < rows; y++) {
+    // Initialize grid based on FIXED logical dimensions
+    for (let y = 0; y < GAME_LOGIC.GRID_ROWS; y++) {
         grid[y] = [];
-        for (let x = 0; x < cols; x++) {
+        for (let x = 0; x < GAME_LOGIC.GRID_COLS; x++) {
             grid[y][x] = null; // null means unpainted
         }
     }
+    
+    console.log(`Canvas initialized: ${DISPLAY.canvasWidth}x${DISPLAY.canvasHeight}, Grid: ${GAME_LOGIC.GRID_COLS}x${GAME_LOGIC.GRID_ROWS}`);
 }
 
 // ===== EVENT LISTENERS =====
@@ -255,10 +267,10 @@ function addPlayerToRoom(playerId, playerName, colorIndex) {
     const playerData = {
         id: playerId,
         name: playerName,
-        color: CONFIG.COLORS[colorIndex % CONFIG.COLORS.length],
+        color: GAME_LOGIC.COLORS[colorIndex % GAME_LOGIC.COLORS.length],
         colorIndex: colorIndex,
-        x: Math.floor(Math.random() * (CONFIG.CANVAS_WIDTH / CONFIG.CELL_SIZE)),
-        y: Math.floor(Math.random() * (CONFIG.CANVAS_HEIGHT / CONFIG.CELL_SIZE)),
+        x: Math.floor(Math.random() * GAME_LOGIC.GRID_COLS),
+        y: Math.floor(Math.random() * GAME_LOGIC.GRID_ROWS),
         direction: Math.floor(Math.random() * 4) // 0: up, 1: right, 2: down, 3: left
     };
     
@@ -381,10 +393,7 @@ function updatePlayerPositions() {
     const myPlayer = gameState.players[gameState.playerId];
     if (!myPlayer) return;
     
-    // Move player forward based on direction
-    const cols = Math.floor(CONFIG.CANVAS_WIDTH / CONFIG.CELL_SIZE);
-    const rows = Math.floor(CONFIG.CANVAS_HEIGHT / CONFIG.CELL_SIZE);
-    
+    // Move player forward based on direction using FIXED logical grid
     switch (myPlayer.direction) {
         case 0: // up
             myPlayer.y -= 1;
@@ -400,14 +409,15 @@ function updatePlayerPositions() {
             break;
     }
     
-    // Wrap around edges
-    if (myPlayer.x < 0) myPlayer.x = cols - 1;
-    if (myPlayer.x >= cols) myPlayer.x = 0;
-    if (myPlayer.y < 0) myPlayer.y = rows - 1;
-    if (myPlayer.y >= rows) myPlayer.y = 0;
+    // Wrap around edges using logical grid dimensions
+    if (myPlayer.x < 0) myPlayer.x = GAME_LOGIC.GRID_COLS - 1;
+    if (myPlayer.x >= GAME_LOGIC.GRID_COLS) myPlayer.x = 0;
+    if (myPlayer.y < 0) myPlayer.y = GAME_LOGIC.GRID_ROWS - 1;
+    if (myPlayer.y >= GAME_LOGIC.GRID_ROWS) myPlayer.y = 0;
     
     // Paint current cell
-    if (myPlayer.y >= 0 && myPlayer.y < rows && myPlayer.x >= 0 && myPlayer.x < cols) {
+    if (myPlayer.y >= 0 && myPlayer.y < GAME_LOGIC.GRID_ROWS && 
+        myPlayer.x >= 0 && myPlayer.x < GAME_LOGIC.GRID_COLS) {
         grid[myPlayer.y][myPlayer.x] = myPlayer.colorIndex;
     }
     
@@ -435,10 +445,9 @@ function listenForPositionUpdates() {
                 gameState.players[playerId].direction = player.direction;
             }
             
-            // Paint cell for remote player
-            const rows = Math.floor(CONFIG.CANVAS_HEIGHT / CONFIG.CELL_SIZE);
-            const cols = Math.floor(CONFIG.CANVAS_WIDTH / CONFIG.CELL_SIZE);
-            if (player.y >= 0 && player.y < rows && player.x >= 0 && player.x < cols) {
+            // Paint cell for remote player using logical grid
+            if (player.y >= 0 && player.y < GAME_LOGIC.GRID_ROWS && 
+                player.x >= 0 && player.x < GAME_LOGIC.GRID_COLS) {
                 grid[player.y][player.x] = player.colorIndex;
             }
         }
@@ -448,9 +457,8 @@ function listenForPositionUpdates() {
     roomRef.get('grid').map().on((cell, key) => {
         if (cell && key) {
             const [x, y] = key.split('_').map(Number);
-            const rows = Math.floor(CONFIG.CANVAS_HEIGHT / CONFIG.CELL_SIZE);
-            const cols = Math.floor(CONFIG.CANVAS_WIDTH / CONFIG.CELL_SIZE);
-            if (y >= 0 && y < rows && x >= 0 && x < cols) {
+            if (y >= 0 && y < GAME_LOGIC.GRID_ROWS && 
+                x >= 0 && x < GAME_LOGIC.GRID_COLS) {
                 grid[y][x] = cell.colorIndex;
             }
         }
@@ -684,10 +692,10 @@ function playAgain() {
     // Clear grid
     grid.forEach(row => row.fill(null));
     
-    // Reset player positions
+    // Reset player positions using logical grid
     Object.values(gameState.players).forEach((player, index) => {
-        player.x = Math.floor(Math.random() * (CONFIG.CANVAS_WIDTH / CONFIG.CELL_SIZE));
-        player.y = Math.floor(Math.random() * (CONFIG.CANVAS_HEIGHT / CONFIG.CELL_SIZE));
+        player.x = Math.floor(Math.random() * GAME_LOGIC.GRID_COLS);
+        player.y = Math.floor(Math.random() * GAME_LOGIC.GRID_ROWS);
         player.direction = Math.floor(Math.random() * 4);
     });
     
@@ -735,6 +743,95 @@ function leaveRoom() {
     document.getElementById('lobby-screen').classList.add('active');
     document.getElementById('room-code-section').classList.add('hidden');
     document.querySelector('.lobby-options').classList.remove('hidden');
+}
+
+// ===== RESPONSIVE CANVAS FUNCTIONS =====
+
+function detectPerformanceTier() {
+    // Detect device performance based on hardware concurrency and memory
+    const cores = navigator.hardwareConcurrency || 2;
+    const memory = navigator.deviceMemory || 4; // GB
+    
+    if (cores >= 8 && memory >= 8) {
+        DISPLAY.performanceTier = 'high';
+    } else if (cores >= 4 && memory >= 4) {
+        DISPLAY.performanceTier = 'medium';
+    } else {
+        DISPLAY.performanceTier = 'low';
+    }
+    
+    console.log(`Performance tier: ${DISPLAY.performanceTier} (cores: ${cores}, memory: ${memory}GB)`);
+}
+
+function calculateCanvasSize() {
+    // Get viewport dimensions
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    
+    // Calculate available space for canvas
+    const availableWidth = Math.min(viewportWidth, CANVAS_CONSTRAINTS.MAX_WIDTH);
+    const availableHeight = Math.min(
+        viewportHeight - CANVAS_CONSTRAINTS.HEADER_HEIGHT - CANVAS_CONSTRAINTS.CONTROLS_HEIGHT,
+        CANVAS_CONSTRAINTS.MAX_HEIGHT
+    );
+    
+    // Calculate aspect ratio from logical grid
+    const aspectRatio = GAME_LOGIC.GRID_COLS / GAME_LOGIC.GRID_ROWS;
+    
+    let canvasWidth, canvasHeight;
+    
+    // Fit canvas to available space while maintaining aspect ratio
+    if (availableWidth / availableHeight > aspectRatio) {
+        // Height constrained
+        canvasHeight = Math.max(availableHeight, CANVAS_CONSTRAINTS.MIN_HEIGHT);
+        canvasWidth = canvasHeight * aspectRatio;
+    } else {
+        // Width constrained
+        canvasWidth = Math.max(availableWidth, CANVAS_CONSTRAINTS.MIN_WIDTH);
+        canvasHeight = canvasWidth / aspectRatio;
+    }
+    
+    // Ensure minimum constraints
+    canvasWidth = Math.max(canvasWidth, CANVAS_CONSTRAINTS.MIN_WIDTH);
+    canvasHeight = Math.max(canvasHeight, CANVAS_CONSTRAINTS.MIN_HEIGHT);
+    
+    // Update DISPLAY settings
+    DISPLAY.canvasWidth = Math.floor(canvasWidth);
+    DISPLAY.canvasHeight = Math.floor(canvasHeight);
+    DISPLAY.cellSize = DISPLAY.canvasWidth / GAME_LOGIC.GRID_COLS;
+    DISPLAY.pixelRatio = window.devicePixelRatio || 1;
+    
+    console.log(`Canvas size calculated: ${DISPLAY.canvasWidth}x${DISPLAY.canvasHeight}, cell size: ${DISPLAY.cellSize.toFixed(2)}px`);
+}
+
+function setupResizeHandler() {
+    let resizeTimeout;
+    
+    const handleResize = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            // Only recalculate if not in active gameplay
+            if (!gameState.gameStarted || gameState.gameEnded) {
+                calculateCanvasSize();
+                if (canvas) {
+                    canvas.width = DISPLAY.canvasWidth;
+                    canvas.height = DISPLAY.canvasHeight;
+                    
+                    // Apply pixel ratio for crisp rendering
+                    if (DISPLAY.pixelRatio > 1) {
+                        canvas.style.width = DISPLAY.canvasWidth + 'px';
+                        canvas.style.height = DISPLAY.canvasHeight + 'px';
+                        canvas.width = DISPLAY.canvasWidth * DISPLAY.pixelRatio;
+                        canvas.height = DISPLAY.canvasHeight * DISPLAY.pixelRatio;
+                        ctx.scale(DISPLAY.pixelRatio, DISPLAY.pixelRatio);
+                    }
+                }
+            }
+        }, 250);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
 }
 
 // ===== UTILITY FUNCTIONS =====
