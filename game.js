@@ -518,7 +518,7 @@ function updatePlayerPositions() {
     });
     
     // Update grid in GunDB (throttled for higher resolution)
-    if (Math.random() < 0.15) { // Sync 15% of the time for better visibility
+    if (Math.random() < 0.30) { // Sync 30% of the time for better visibility
         syncGridCell(gridX, gridY, myPlayer.colorIndex);
     }
 }
